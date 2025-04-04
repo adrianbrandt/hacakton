@@ -7,6 +7,8 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .table-container {
@@ -16,11 +18,72 @@
 .actions {
     display: flex;
     gap: 8px;
+    flex-wrap: wrap;
 }
 
 .btn-small {
     padding: 5px 10px;
     font-size: 14px;
+}
+
+.amount {
+    font-weight: 500;
+}
+
+.amount.income {
+    color: var(--income-color);
+}
+
+.amount.expense {
+    color: var(--expense-color);
+}
+
+.no-transactions {
+    text-align: center;
+    padding: 20px;
+    background-color: var(--light-gray);
+    border-radius: 8px;
+}
+
+.no-transactions p {
+    margin-bottom: 15px;
+    color: var(--dark-gray);
+}
+
+.loading, .error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    text-align: center;
+}
+
+.spinner {
+    border: 4px solid var(--light-gray);
+    border-top: 4px solid var(--primary-color);
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    animation: spin 1s linear infinite;
+    margin-bottom: 15px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.btn-delete {
+    background-color: var(--danger-color);
+}
+
+.btn-edit {
+    background-color: var(--secondary-color);
+}
+
+.btn-view {
+    background-color: var(--primary-color);
 }
 
 /* Responsive table */
@@ -29,13 +92,20 @@
         font-size: 14px;
     }
 
-    .transaction-list .actions {
+    .transaction-header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .actions {
         flex-direction: column;
         gap: 4px;
     }
 
     .btn-small {
-        padding: 3px 8px;
+        padding: 5px 8px;
         font-size: 12px;
+        width: 100%;
+        text-align: center;
     }
 }

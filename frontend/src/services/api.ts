@@ -27,9 +27,39 @@ interface Category {
 
 export const api = {
     // Transactions
-    getTransactions: async (): Promise<Transaction[]> => {
-        const response = await axios.get<Transaction[]>(`${API_URL}/transactions`);
-        return response.data;
+    getTransactions: async (options?: {
+        limit?: number,
+        sort?: 'desc' | 'asc',
+        startDate?: Date,
+        endDate?: Date
+    }): Promise<Transaction[]> => {
+        const params = new URLSearchParams();
+
+        if (options?.limit) {
+            params.append('limit', options.limit.toString());
+        }
+
+        if (options?.sort) {
+            params.append('sort', options.sort);
+        }
+
+        if (options?.startDate) {
+            params.append('startDate', options.startDate.toISOString());
+        }
+
+        if (options?.endDate) {
+            params.append('endDate', options.endDate.toISOString());
+        }
+
+        const response = await axios.get<Transaction[]>(`${API_URL}/transactions`, {
+            params
+        });
+
+        // Ensure amount is a number
+        return response.data.map(transaction => ({
+            ...transaction,
+            amount: Number(transaction.amount)
+        }));
     },
 
     getTransaction: async (id: number): Promise<Transaction> => {

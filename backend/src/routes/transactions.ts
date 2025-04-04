@@ -6,9 +6,45 @@ const router = express.Router();
 // Get all transactions
 router.get('/', async (req, res) => {
     try {
-        const { rows } = await db.query(
-            'SELECT t.*, c.name as category_name FROM transactions t LEFT JOIN categories c ON t.category_id = c.id ORDER BY t.booking_date DESC LIMIT 100'
-        );
+        const { limit, sort, startDate, endDate } = req.query;
+
+        // Base query
+        let query = `
+            SELECT t.*, c.name as category_name 
+            FROM transactions t 
+            LEFT JOIN categories c ON t.category_id = c.id
+        `;
+
+        const whereClauses: string[] = [];
+        const queryParams: any[] = [];
+
+        // Handle date filtering
+        if (startDate && endDate) {
+            whereClauses.push(`t.booking_date BETWEEN $${queryParams.length + 1} AND $${queryParams.length + 2}`);
+            queryParams.push(startDate, endDate);
+        } else if (startDate) {
+            whereClauses.push(`t.booking_date >= $${queryParams.length + 1}`);
+            queryParams.push(startDate);
+        } else if (endDate) {
+            whereClauses.push(`t.booking_date <= $${queryParams.length + 1}`);
+            queryParams.push(endDate);
+        }
+
+        // Add WHERE clause if we have any conditions
+        if (whereClauses.length > 0) {
+            query += ' WHERE ' + whereClauses.join(' AND ');
+        }
+
+        // Add sorting
+        query += ` ORDER BY t.booking_date ${sort === 'asc' ? 'ASC' : 'DESC'}`;
+
+        // Add limit
+        if (limit) {
+            query += ` LIMIT $${queryParams.length + 1}`;
+            queryParams.push(Number(limit));
+        }
+
+        const { rows } = await db.query(query, queryParams);
         res.json(rows);
     } catch (error) {
         console.error('Error fetching transactions:', error);
