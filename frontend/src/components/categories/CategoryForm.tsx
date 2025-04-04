@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
+import './CategoryForm.css';
 
 interface Category {
     id?: number;
@@ -15,8 +16,11 @@ interface ParentCategory {
     name: string;
 }
 
-const CategoryForm: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+interface CategoryFormProps {
+    categoryId?: string;
+}
+
+const CategoryForm: React.FC<CategoryFormProps> = ({ categoryId }) => {
     const navigate = useNavigate();
     const [parentCategories, setParentCategories] = useState<ParentCategory[]>([]);
     const [formData, setFormData] = useState<Category>({
@@ -27,7 +31,6 @@ const CategoryForm: React.FC = () => {
     });
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const isEditing = Boolean(id);
 
     useEffect(() => {
         // Fetch parent categories and existing category details if editing
@@ -39,8 +42,9 @@ const CategoryForm: React.FC = () => {
                 setParentCategories(parents);
 
                 // If editing, fetch category details
-                if (isEditing) {
-                    const categoryData = await api.getCategory(parseInt(id!));
+                if (categoryId) {
+                    setIsLoading(true);
+                    const categoryData = await api.getCategory(parseInt(categoryId));
                     setFormData({
                         id: categoryData.id,
                         name: categoryData.name,
@@ -48,6 +52,7 @@ const CategoryForm: React.FC = () => {
                         description: categoryData.description || '',
                         parent_id: categoryData.parent_id || undefined
                     });
+                    setIsLoading(false);
                 }
             } catch (err) {
                 console.error(err);
@@ -56,7 +61,7 @@ const CategoryForm: React.FC = () => {
         };
 
         fetchData();
-    }, [id, isEditing]);
+    }, [categoryId]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -75,8 +80,8 @@ const CategoryForm: React.FC = () => {
             // Remove undefined values and id for submission
             const { id: _, ...submissionData } = formData;
 
-            if (isEditing) {
-                await api.updateCategory(parseInt(id!), submissionData);
+            if (categoryId) {
+                await api.updateCategory(parseInt(categoryId), submissionData);
             } else {
                 await api.createCategory(submissionData);
             }
@@ -89,13 +94,16 @@ const CategoryForm: React.FC = () => {
         }
     };
 
+    if (isLoading && categoryId) return <div>Loading...</div>;
+
     return (
         <div className="category-form card">
-            <h2>{isEditing ? 'Edit Category' : 'Add New Category'}</h2>
+            <h2>{categoryId ? 'Edit Category' : 'Add New Category'}</h2>
 
             {error && <div className="error">{error}</div>}
 
             <form onSubmit={handleSubmit}>
+                {/* Name Input */}
                 <div className="form-group">
                     <label className="form-label">Name</label>
                     <input
@@ -108,6 +116,7 @@ const CategoryForm: React.FC = () => {
                     />
                 </div>
 
+                {/* SIFO Code Input */}
                 <div className="form-group">
                     <label className="form-label">SIFO Code (Optional)</label>
                     <input
@@ -119,6 +128,7 @@ const CategoryForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Description Input */}
                 <div className="form-group">
                     <label className="form-label">Description (Optional)</label>
                     <input
@@ -130,6 +140,7 @@ const CategoryForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Parent Category Select */}
                 <div className="form-group">
                     <label className="form-label">Parent Category (Optional)</label>
                     <select
@@ -147,6 +158,7 @@ const CategoryForm: React.FC = () => {
                     </select>
                 </div>
 
+                {/* Form Actions */}
                 <div className="form-actions">
                     <button
                         type="submit"
@@ -155,7 +167,7 @@ const CategoryForm: React.FC = () => {
                     >
                         {isLoading
                             ? 'Saving...'
-                            : (isEditing ? 'Update Category' : 'Add Category')
+                            : (categoryId ? 'Update Category' : 'Add Category')
                         }
                     </button>
                     <button

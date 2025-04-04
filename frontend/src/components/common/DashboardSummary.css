@@ -1,10 +1,10 @@
-/* Dashboard Layout */
+/* DashboardSummary Layout */
 .dashboard {
     max-width: 1200px;
     margin: 0 auto;
 }
 
-/* Dashboard Header */
+/* DashboardSummary Header */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
@@ -63,7 +63,7 @@
 .summary-card.balance .amount.positive { color: var(--accent-color); }
 .summary-card.balance .amount.negative { color: var(--danger-color); }
 
-/* Dashboard Sections */
+/* DashboardSummary Sections */
 .dashboard-sections {
     display: grid;
     grid-template-columns: 2fr 1fr;

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
-import api from '../../services/api';
+import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
+import api from '../../services/api';
 import './TransactionDetail.css';
 
 interface Transaction {
@@ -20,8 +20,11 @@ interface Transaction {
     updated_at: string;
 }
 
-const TransactionDetail: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+interface TransactionDetailProps {
+    transactionId?: string;
+}
+
+const TransactionDetail: React.FC<TransactionDetailProps> = ({ transactionId }) => {
     const [transaction, setTransaction] = useState<Transaction | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -29,8 +32,10 @@ const TransactionDetail: React.FC = () => {
 
     useEffect(() => {
         const fetchTransaction = async () => {
+            if (!transactionId) return;
+
             try {
-                const data = await api.getTransaction(parseInt(id!));
+                const data = await api.getTransaction(parseInt(transactionId));
                 setTransaction(data);
                 setLoading(false);
             } catch (err) {
@@ -41,12 +46,14 @@ const TransactionDetail: React.FC = () => {
         };
 
         fetchTransaction();
-    }, [id]);
+    }, [transactionId]);
 
     const handleDelete = async () => {
+        if (!transactionId) return;
+
         if (window.confirm('Are you sure you want to delete this transaction?')) {
             try {
-                await api.deleteTransaction(parseInt(id!));
+                await api.deleteTransaction(parseInt(transactionId));
                 navigate('/transactions');
             } catch (err) {
                 console.error(err);
@@ -64,24 +71,32 @@ const TransactionDetail: React.FC = () => {
             <div className="transaction-header">
                 <h2>Transaction Details</h2>
                 <div className="actions">
-                    <Link to="/transactions" className="btn">Back to List</Link>
-                    <Link to={`/transactions/edit/${id}`} className="btn btn-secondary">Edit</Link>
+                    <button onClick={() => navigate('/transactions')} className="btn">Back to List</button>
+                    <button
+                        onClick={() => navigate(`/transactions/edit/${transactionId}`)}
+                        className="btn btn-secondary"
+                    >
+                        Edit
+                    </button>
                     <button onClick={handleDelete} className="btn btn-danger">Delete</button>
                 </div>
             </div>
 
             <div className="transaction-info">
+                {/* Similar to the previous implementation */}
                 <div className="info-group">
                     <h3>Basic Information</h3>
                     <div className="info-row">
                         <span className="info-label">Date:</span>
-                        <span className="info-value">{format(new Date(transaction.booking_date), 'dd.MM.yyyy')}</span>
+                        <span className="info-value">
+                            {format(new Date(transaction.booking_date), 'dd.MM.yyyy')}
+        </span>
                     </div>
                     <div className="info-row">
                         <span className="info-label">Amount:</span>
                         <span className={`info-value ${transaction.amount >= 0 ? 'income' : 'expense'}`}>
-              {transaction.amount.toFixed(2)} {transaction.currency}
-            </span>
+                            {transaction.amount.toFixed(2)} {transaction.currency}
+                        </span>
                     </div>
                     <div className="info-row">
                         <span className="info-label">Title:</span>
@@ -118,14 +133,18 @@ const TransactionDetail: React.FC = () => {
                     <div className="info-row">
                         <span className="info-label">Created:</span>
                         <span className="info-value">
-              {transaction.created_at && format(new Date(transaction.created_at), 'dd.MM.yyyy HH:mm')}
-            </span>
+                            {transaction.created_at
+                                ? format(new Date(transaction.created_at), 'dd.MM.yyyy HH:mm')
+                                : '-'}
+                        </span>
                     </div>
                     <div className="info-row">
                         <span className="info-label">Last Updated:</span>
                         <span className="info-value">
-              {transaction.updated_at && format(new Date(transaction.updated_at), 'dd.MM.yyyy HH:mm')}
-            </span>
+                            {transaction.updated_at
+                                ? format(new Date(transaction.updated_at), 'dd.MM.yyyy HH:mm')
+                                : '-'}
+                        </span>
                     </div>
                     <div className="info-row">
                         <span className="info-label">ID:</span>

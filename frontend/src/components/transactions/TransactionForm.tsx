@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import './TransactionForm.css';
 
@@ -21,66 +21,61 @@ interface TransactionFormData {
     category_id: string;
 }
 
-const defaultFormData: TransactionFormData = {
-    booking_date: new Date().toISOString().split('T')[0],
-    amount: '',
-    sender: '',
-    receiver: '',
-    name: '',
-    title: '',
-    currency: 'NOK',
-    payment_type: '',
-    category_id: '',
-};
+interface TransactionFormProps {
+    transactionId?: string;
+}
 
-const TransactionForm: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
-    const [formData, setFormData] = useState<TransactionFormData>(defaultFormData);
+const TransactionForm: React.FC<TransactionFormProps> = ({ transactionId }) => {
+    const [formData, setFormData] = useState<TransactionFormData>({
+        booking_date: new Date().toISOString().split('T')[0],
+        amount: '',
+        sender: '',
+        receiver: '',
+        name: '',
+        title: '',
+        currency: 'NOK',
+        payment_type: '',
+        category_id: '',
+    });
+
     const [categories, setCategories] = useState<Category[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
-    const isEditing = Boolean(id);
     const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchData = async () => {
             try {
-                const data = await api.getCategories();
-                setCategories(data);
+                // Fetch categories
+                const categoryData = await api.getCategories();
+                setCategories(categoryData);
+
+                // If editing, fetch transaction details
+                if (transactionId) {
+                    setIsLoading(true);
+                    const transactionData = await api.getTransaction(parseInt(transactionId));
+                    setFormData({
+                        booking_date: new Date(transactionData.booking_date).toISOString().split('T')[0],
+                        amount: transactionData.amount.toString(),
+                        sender: transactionData.sender || '',
+                        receiver: transactionData.receiver || '',
+                        name: transactionData.name || '',
+                        title: transactionData.title || '',
+                        currency: transactionData.currency || 'NOK',
+                        payment_type: transactionData.payment_type || '',
+                        category_id: transactionData.category_id ? transactionData.category_id.toString() : '',
+                    });
+                    setIsLoading(false);
+                }
             } catch (err) {
                 console.error(err);
-                setError('Failed to load categories');
-            }
-        };
-
-        const fetchTransaction = async () => {
-            if (!id) return;
-
-            try {
-                setIsLoading(true);
-                const data = await api.getTransaction(parseInt(id));
-                setFormData({
-                    booking_date: new Date(data.booking_date).toISOString().split('T')[0],
-                    amount: data.amount.toString(),
-                    sender: data.sender || '',
-                    receiver: data.receiver || '',
-                    name: data.name || '',
-                    title: data.title || '',
-                    currency: data.currency || 'NOK',
-                    payment_type: data.payment_type || '',
-                    category_id: data.category_id ? data.category_id.toString() : '',
-                });
-                setIsLoading(false);
-            } catch (err) {
-                console.error(err);
-                setError('Failed to load transaction');
+                setError('Failed to load data');
                 setIsLoading(false);
             }
         };
 
-        fetchCategories();
-        fetchTransaction();
-    }, [id]);
+        fetchData();
+    }, [transactionId]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -89,23 +84,24 @@ const TransactionForm: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        setIsLoading(true);
+        setError('');
 
         try {
-            setIsLoading(true);
-
             const transactionData = {
                 ...formData,
                 amount: parseFloat(formData.amount),
                 category_id: formData.category_id ? parseInt(formData.category_id) : null,
             };
 
-            if (isEditing) {
-                await api.updateTransaction(parseInt(id!), transactionData);
+            if (transactionId) {
+                // Update existing transaction
+                await api.updateTransaction(parseInt(transactionId), transactionData);
             } else {
+                // Create new transaction
                 await api.createTransaction(transactionData);
             }
 
-            setIsLoading(false);
             navigate('/transactions');
         } catch (err) {
             console.error(err);
@@ -114,14 +110,15 @@ const TransactionForm: React.FC = () => {
         }
     };
 
-    if (isLoading && isEditing) return <div>Loading...</div>;
+    if (isLoading && transactionId) return <div>Loading...</div>;
     if (error) return <div className="error">{error}</div>;
 
     return (
         <div className="transaction-form card">
-            <h2>{isEditing ? 'Edit Transaction' : 'Add New Transaction'}</h2>
+            <h2>{transactionId ? 'Edit Transaction' : 'Add New Transaction'}</h2>
 
             <form onSubmit={handleSubmit}>
+                {/* Date Input */}
                 <div className="form-group">
                     <label className="form-label">Date</label>
                     <input
@@ -134,6 +131,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Amount Input */}
                 <div className="form-group">
                     <label className="form-label">Amount</label>
                     <div className="amount-input">
@@ -160,6 +158,7 @@ const TransactionForm: React.FC = () => {
                     </div>
                 </div>
 
+                {/* Title Input */}
                 <div className="form-group">
                     <label className="form-label">Title</label>
                     <input
@@ -172,6 +171,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Description Input */}
                 <div className="form-group">
                     <label className="form-label">Description</label>
                     <input
@@ -183,6 +183,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Sender Input */}
                 <div className="form-group">
                     <label className="form-label">Sender</label>
                     <input
@@ -194,6 +195,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Receiver Input */}
                 <div className="form-group">
                     <label className="form-label">Receiver</label>
                     <input
@@ -205,6 +207,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Payment Type Input */}
                 <div className="form-group">
                     <label className="form-label">Payment Type</label>
                     <input
@@ -216,6 +219,7 @@ const TransactionForm: React.FC = () => {
                     />
                 </div>
 
+                {/* Category Select */}
                 <div className="form-group">
                     <label className="form-label">Category</label>
                     <select
@@ -226,7 +230,7 @@ const TransactionForm: React.FC = () => {
                     >
                         <option value="">-- Select Category --</option>
                         {categories
-                            .filter(cat => cat.parent_id !== null) // Only show subcategories
+                            .filter(cat => cat.parent_id !== null)
                             .map(category => (
                                 <option key={category.id} value={category.id}>
                                     {category.name}
@@ -235,11 +239,23 @@ const TransactionForm: React.FC = () => {
                     </select>
                 </div>
 
+                {/* Form Actions */}
                 <div className="form-actions">
-                    <button type="submit" className="btn btn-primary" disabled={isLoading}>
-                        {isLoading ? 'Saving...' : (isEditing ? 'Update Transaction' : 'Add Transaction')}
+                    <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={isLoading}
+                    >
+                        {isLoading
+                            ? 'Saving...'
+                            : (transactionId ? 'Update Transaction' : 'Add Transaction')
+                        }
                     </button>
-                    <button type="button" className="btn btn-secondary" onClick={() => navigate('/transactions')}>
+                    <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => navigate('/transactions')}
+                    >
                         Cancel
                     </button>
                 </div>

@@ -9,7 +9,7 @@ import {
     subMonths,
     subYears,
 } from 'date-fns';
-import api, { Transaction } from '../../services/api';
+import api, { Transaction } from '../../services/api.ts';
 import './DashboardSummary.css';
 
 interface CategorySummary {
@@ -96,7 +96,7 @@ const DashboardSummary: React.FC = () => {
 
                 setLoading(false);
             } catch (err) {
-                console.error('Dashboard fetch error:', err);
+                console.error('DashboardSummary fetch error:', err);
                 setError('Failed to fetch dashboard data. Please try again.');
                 setLoading(false);
             }
