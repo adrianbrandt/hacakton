@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
-import {
-    format,
-    startOfMonth,
-    endOfMonth,
-    startOfYear,
-    endOfYear,
-    subMonths,
-    subYears,
-} from 'date-fns';
-import api, { Transaction } from '../../services/api.ts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import api, { Transaction } from '../../services/api';
 import './DashboardSummary.css';
 
 interface CategorySummary {
@@ -24,44 +15,41 @@ interface DateFilter {
     startDate: Date;
     endDate: Date;
 }
-
 const DashboardSummary: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [categorySummary, setCategorySummary] = useState<CategorySummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Extend filter options
     const dateFilters: DateFilter[] = [
         {
             label: 'This Month',
-            startDate: startOfMonth(new Date()),
-            endDate: endOfMonth(new Date())
+            startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+            endDate: new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0),
         },
         {
             label: 'Last Month',
-            startDate: startOfMonth(subMonths(new Date(), 1)),
-            endDate: endOfMonth(subMonths(new Date(), 1))
+            startDate: new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1),
+            endDate: new Date(new Date().getFullYear(), new Date().getMonth(), 0),
         },
         {
             label: 'This Year',
-            startDate: startOfYear(new Date()),
-            endDate: endOfYear(new Date())
+            startDate: new Date(new Date().getFullYear(), 0, 1),
+            endDate: new Date(new Date().getFullYear(), 11, 31),
         },
         {
             label: 'Last Year',
-            startDate: startOfYear(subYears(new Date(), 1)),
-            endDate: endOfYear(subYears(new Date(), 1))
+            startDate: new Date(new Date().getFullYear() - 1, 0, 1),
+            endDate: new Date(new Date().getFullYear() - 1, 11, 31),
         },
         {
             label: 'All Time',
-            startDate: new Date(2000, 0, 1), // A far back start date
-            endDate: new Date()
-        }
+            startDate: new Date(2000, 0, 1), // Far back start date
+            endDate: new Date(),
+        },
     ];
 
     const [selectedFilter, setSelectedFilter] = useState<DateFilter>(dateFilters[0]);
-    const [transactionType, setTransactionType] = useState<'all' | 'income' | 'expense'>('all');
 
     useEffect(() => {
         const fetchDashboardData = async () => {
@@ -69,50 +57,37 @@ const DashboardSummary: React.FC = () => {
                 setLoading(true);
                 setError(null);
 
-                // Prepare options for fetching transactions
-                const options: Parameters<typeof api.getTransactions>[0] = {
-                    sort: 'desc',
-                    transactionType: transactionType
+                const options = {
+                    startDate: selectedFilter.startDate,
+                    endDate: selectedFilter.endDate,
                 };
 
-                // Only add date filters if not "All Time"
-                if (selectedFilter.label !== 'All Time') {
-                    options.startDate = selectedFilter.startDate;
-                    options.endDate = selectedFilter.endDate;
-                }
-
-                // Fetch transactions with date range and type filter
                 const data = await api.getTransactions(options);
-
-                if (data.length === 0) {
-                    setError('No transactions found for the selected criteria.');
-                }
-
                 setTransactions(data);
 
-                // Calculate category summaries
                 const categoryTotals = calculateCategorySummary(data);
                 setCategorySummary(categoryTotals);
 
                 setLoading(false);
             } catch (err) {
-                console.error('DashboardSummary fetch error:', err);
-                setError('Failed to fetch dashboard data. Please try again.');
+                console.error(err);
+                setError('Failed to fetch dashboard data');
                 setLoading(false);
             }
         };
 
         fetchDashboardData();
-    }, [selectedFilter, transactionType]);
+    }, [selectedFilter]);
 
     const calculateCategorySummary = (transList: Transaction[]): CategorySummary[] => {
-        // Only consider expense transactions for category summary
-        const expenseTransactions = transList.filter(t => t.amount < 0);
-        const totalExpenses = Math.abs(expenseTransactions.reduce((sum, t) => sum + t.amount, 0));
+        const expenseTransactions = transList.filter((t) => t.amount < 0);
+        const totalExpenses = Math.abs(
+            expenseTransactions.reduce((sum, t) => sum + t.amount, 0)
+        );
 
         const categoryTotals = expenseTransactions.reduce((acc, transaction) => {
             const category = transaction.category_name || 'Uncategorized';
-            const existingCategory = acc.find(c => c.name === category);
+            const existingCategory = acc.find((c) => c.name === category);
             const amount = Math.abs(transaction.amount);
 
             if (existingCategory) {
@@ -123,91 +98,95 @@ const DashboardSummary: React.FC = () => {
                     name: category,
                     totalAmount: amount,
                     transactionCount: 1,
-                    percentage: 0
+                    percentage: 0,
                 });
             }
 
             return acc;
         }, [] as CategorySummary[]);
 
-        // Calculate percentages
-        return categoryTotals.map(category => ({
-            ...category,
-            percentage: totalExpenses > 0
-                ? parseFloat(((category.totalAmount / totalExpenses) * 100).toFixed(2))
-                : 0
-        })).sort((a, b) => b.totalAmount - a.totalAmount).slice(0, 5);
+        return categoryTotals
+            .map((category) => ({
+                ...category,
+                percentage:
+                    totalExpenses > 0
+                        ? parseFloat(((category.totalAmount / totalExpenses) * 100).toFixed(2))
+                        : 0,
+            }))
+            .sort((a, b) => b.totalAmount - a.totalAmount);
     };
 
-    const calculateSummary = () => {
-        let filteredTransactions = transactions;
-
-        const totalIncome = filteredTransactions
-            .filter(t => t.amount > 0)
+    const calculateSummary = (transactions: Transaction[]) => {
+        const totalIncome = transactions
+            .filter((t) => t.amount > 0)
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const totalExpenses = Math.abs(filteredTransactions
-            .filter(t => t.amount < 0)
-            .reduce((sum, t) => sum + t.amount, 0));
+        const totalExpenses = Math.abs(
+            transactions.filter((t) => t.amount < 0).reduce((sum, t) => sum + t.amount, 0)
+        );
 
         return {
             totalIncome,
             totalExpenses,
-            balance: totalIncome - totalExpenses
+            balance: totalIncome - totalExpenses,
         };
     };
 
-    const { totalIncome, totalExpenses, balance } = calculateSummary();
+    const { totalIncome, totalExpenses, balance } = calculateSummary(transactions);
+
+    const chartData = transactions.reduce((acc, transaction) => {
+        const month = new Date(transaction.booking_date).toLocaleString('default', { month: 'short', year: 'numeric' });
+        const existingMonth = acc.find((d) => d.month === month);
+
+        if (existingMonth) {
+            existingMonth.income += transaction.amount > 0 ? transaction.amount : 0;
+            existingMonth.expense += transaction.amount < 0 ? Math.abs(transaction.amount) : 0;
+        } else {
+            acc.push({
+                month,
+                income: transaction.amount > 0 ? transaction.amount : 0,
+                expense: transaction.amount < 0 ? Math.abs(transaction.amount) : 0,
+            });
+        }
+
+        return acc;
+    }, [] as { month: string; income: number; expense: number }[]).sort(
+        (a, b) => new Date(a.month).getTime() - new Date(b.month).getTime()
+    );
 
     if (loading) {
         return (
-            <div className="dashboard loading">
-                <div className="spinner"></div>
+            <div className="dashboard-loading">
+                <div className="spinner" />
                 <p>Loading dashboard...</p>
             </div>
         );
     }
 
     return (
-        <div className="dashboard fade-in">
+        <div className="dashboard">
             <div className="dashboard-header">
                 <h2>Financial Overview</h2>
-                <div className="dashboard-filters">
-                    {/* Date Range Filters */}
-                    <select
-                        value={selectedFilter.label}
-                        onChange={(e) => {
-                            const filter = dateFilters.find(f => f.label === e.target.value);
-                            if (filter) setSelectedFilter(filter);
-                        }}
-                        className="form-control"
-                    >
-                        {dateFilters.map(filter => (
-                            <option key={filter.label} value={filter.label}>
-                                {filter.label}
-                            </option>
-                        ))}
-                    </select>
-
-                    {/* Transaction Type Filter */}
-                    <select
-                        value={transactionType}
-                        onChange={(e) => setTransactionType(e.target.value as 'all' | 'income' | 'expense')}
-                        className="form-control"
-                    >
-                        <option value="all">All Transactions</option>
-                        <option value="income">Income Only</option>
-                        <option value="expense">Expenses Only</option>
-                    </select>
-                </div>
+                <select
+                    value={selectedFilter.label}
+                    onChange={(e) => {
+                        const filter = dateFilters.find((f) => f.label === e.target.value);
+                        if (filter) setSelectedFilter(filter);
+                    }}
+                    className="filter-select"
+                >
+                    {dateFilters.map((filter) => (
+                        <option key={filter.label} value={filter.label}>
+                            {filter.label}
+                        </option>
+                    ))}
+                </select>
             </div>
 
             {error ? (
-                <div className="dashboard error">
+                <div className="dashboard-error">
                     <p>{error}</p>
-                    <button onClick={() => window.location.reload()} className="btn btn-secondary">
-                        Retry
-                    </button>
+                    <button onClick={() => window.location.reload()}>Retry</button>
                 </div>
             ) : (
                 <>
@@ -226,76 +205,73 @@ const DashboardSummary: React.FC = () => {
                                 {balance.toFixed(2)} NOK
                             </p>
                         </div>
-                        <div className="summary-card transactions">
-                            <h3>Total Transactions</h3>
-                            <p className="amount">{transactions.length}</p>
+                    </div>
+
+                    <div className="dashboard-chart">
+                        <h3>Income vs Expense</h3>
+                        <ResponsiveContainer width="100%" height={400}>
+                            <LineChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="month" />
+                                <YAxis />
+                                <Tooltip />
+                                <Legend />
+                                <Line type="monotone" dataKey="income" stroke="#82ca9d" />
+                                <Line type="monotone" dataKey="expense" stroke="#8884d8" />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+
+                    <div className="dashboard-category-summary">
+                        <h3>Expense by Category</h3>
+                        <div className="category-chart">
+                            {categorySummary.map((category) => (
+                                <div key={category.name} className="category-item">
+                                    <div className="category-info">
+                                        <span className="category-name">{category.name}</span>
+                                        <span className="category-amount">
+                      {category.totalAmount.toFixed(2)} NOK
+                    </span>
+                                    </div>
+                                    <div className="category-bar">
+                                        <div
+                                            className="category-bar-fill"
+                                            style={{ width: `${category.percentage}%` }}
+                                        />
+                                    </div>
+                                    <span className="category-percentage">{category.percentage}%</span>
+                                </div>
+                            ))}
                         </div>
                     </div>
 
-                    <div className="dashboard-sections">
-                        <div className="card recent-transactions">
-                            <div className="card-header">
-                                <h3>Recent Transactions</h3>
-                                <Link to="/transactions" className="btn btn-small">View All</Link>
-                            </div>
-                            {transactions.length > 0 ? (
-                                <table>
-                                    <thead>
-                                    <tr>
-                                        <th>Date</th>
-                                        <th>Title</th>
-                                        <th>Category</th>
-                                        <th>Amount</th>
+                    <div className="dashboard-recent-transactions">
+                        <h3>Recent Transactions</h3>
+                        <div className="transactions-table">
+                            <table>
+                                <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Title</th>
+                                    <th>Category</th>
+                                    <th>Amount</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {transactions.slice(0, 10).map((transaction) => (
+                                    <tr key={transaction.id}>
+                                        <td>{new Date(transaction.booking_date).toLocaleDateString()}</td>
+                                        <td>{transaction.title}</td>
+                                        <td>{transaction.category_name || 'Uncategorized'}</td>
+                                        <td
+                                            className={transaction.amount >= 0 ? 'amount income' : 'amount expense'}
+                                        >
+                                            {transaction.amount.toFixed(2)} {transaction.currency}
+                                        </td>
                                     </tr>
-                                    </thead>
-                                    <tbody>
-                                    {transactions.slice(0, 10).map(transaction => (
-                                        <tr key={transaction.id}>
-                                            <td>{format(new Date(transaction.booking_date), 'dd.MM.yyyy')}</td>
-                                            <td>{transaction.title}</td>
-                                            <td>{transaction.category_name || 'Uncategorized'}</td>
-                                            <td className={transaction.amount >= 0 ? 'income' : 'expense'}>
-                                                {transaction.amount.toFixed(2)} NOK
-                                            </td>
-                                        </tr>
-                                    ))}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <div className="no-transactions">
-                                    <p>No transactions found for this period.</p>
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="card category-summary">
-                            <div className="card-header">
-                                <h3>Top Expense Categories</h3>
-                                <Link to="/categories" className="btn btn-small">View All</Link>
-                            </div>
-                            {categorySummary.length > 0 ? (
-                                <div className="category-breakdown">
-                                    {categorySummary.map(category => (
-                                        <div key={category.name} className="category-item">
-                                            <div className="category-info">
-                                                <span className="category-name">{category.name}</span>
-                                                <span className="category-amount">{category.totalAmount.toFixed(2)} NOK</span>
-                                            </div>
-                                            <div className="category-percentage">
-                                                <div
-                                                    className="percentage-bar"
-                                                    style={{width: `${category.percentage}%`}}
-                                                ></div>
-                                                <span>{category.percentage}%</span>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="no-categories">
-                                    <p>No expense categories found.</p>
-                                </div>
-                            )}
+                                ))}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </>
