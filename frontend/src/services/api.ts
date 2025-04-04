@@ -31,7 +31,8 @@ export const api = {
         limit?: number,
         sort?: 'desc' | 'asc',
         startDate?: Date,
-        endDate?: Date
+        endDate?: Date,
+        transactionType?: 'all' | 'income' | 'expense'
     }): Promise<Transaction[]> => {
         const params = new URLSearchParams();
 
@@ -49,6 +50,10 @@ export const api = {
 
         if (options?.endDate) {
             params.append('endDate', options.endDate.toISOString());
+        }
+
+        if (options?.transactionType) {
+            params.append('transactionType', options.transactionType);
         }
 
         const response = await axios.get<Transaction[]>(`${API_URL}/transactions`, {

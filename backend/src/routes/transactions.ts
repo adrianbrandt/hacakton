@@ -6,7 +6,13 @@ const router = express.Router();
 // Get all transactions
 router.get('/', async (req, res) => {
     try {
-        const { limit, sort, startDate, endDate } = req.query;
+        const {
+            limit,
+            sort,
+            startDate,
+            endDate,
+            transactionType
+        } = req.query;
 
         // Base query
         let query = `
@@ -30,6 +36,19 @@ router.get('/', async (req, res) => {
             queryParams.push(endDate);
         }
 
+        // Handle transaction type filtering
+        if (transactionType) {
+            switch (transactionType) {
+                case 'income':
+                    whereClauses.push(`t.amount > 0`);
+                    break;
+                case 'expense':
+                    whereClauses.push(`t.amount < 0`);
+                    break;
+                // 'all' doesn't require additional filtering
+            }
+        }
+
         // Add WHERE clause if we have any conditions
         if (whereClauses.length > 0) {
             query += ' WHERE ' + whereClauses.join(' AND ');
@@ -48,7 +67,7 @@ router.get('/', async (req, res) => {
         res.json(rows);
     } catch (error) {
         console.error('Error fetching transactions:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error });
     }
 });
 
@@ -67,7 +86,7 @@ router.get('/:id', async (req, res) => {
         res.json(rows[0]);
     } catch (error) {
         console.error('Error fetching transaction:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error });
     }
 });
 
@@ -84,7 +103,7 @@ router.post('/', async (req, res) => {
         res.status(201).json(rows[0]);
     } catch (error) {
         console.error('Error creating transaction:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error });
     }
 });
 
@@ -107,7 +126,7 @@ router.put('/:id', async (req, res) => {
         res.json(rows[0]);
     } catch (error) {
         console.error('Error updating transaction:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error });
     }
 });
 
@@ -125,7 +144,7 @@ router.delete('/:id', async (req, res) => {
         res.status(204).send();
     } catch (error) {
         console.error('Error deleting transaction:', error);
-        res.status(500).json({ error: 'Internal server error' });
+        res.status(500).json({ error: 'Internal server error', details: error });
     }
 });
 
