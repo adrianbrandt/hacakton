@@ -176,3 +176,14 @@ table th {
   color: var(--danger-color);
   margin-bottom: 15px;
 }
+
+#root {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Add a visible background if something goes wrong */
+body {
+  background-color: #f0f0f0;
+}

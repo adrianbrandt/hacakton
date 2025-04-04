@@ -2,9 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../../services/api';
 
+// Define interfaces outside the component
 interface Transaction {
     id: number;
-    amount: number;
+    amount: number | string;  // Allow both number and string
     booking_date: string;
     title: string;
     category_name?: string;
@@ -25,12 +26,21 @@ const DashboardSummary: React.FC = () => {
     useEffect(() => {
         const fetchDashboardData = async () => {
             try {
-                // Fetch transactions
+                console.log('Fetching dashboard data...');
                 const transactionsData = await api.getTransactions();
-                setTransactions(transactionsData.slice(0, 10)); // Last 10 transactions
+                console.log('Transactions fetched:', transactionsData);
 
-                // Calculate category summaries
-                const categoryTotals = transactionsData.reduce((acc, transaction) => {
+                // Normalize transactions to ensure amount is a number
+                const normalizedTransactions = transactionsData.map(transaction => ({
+                    ...transaction,
+                    amount: typeof transaction.amount === 'string'
+                        ? parseFloat(transaction.amount)
+                        : transaction.amount
+                }));
+
+                setTransactions(normalizedTransactions.slice(0, 10));
+
+                const categoryTotals = normalizedTransactions.reduce((acc, transaction) => {
                     if (!transaction.category_name) return acc;
 
                     const existingCategory = acc.find(
@@ -38,12 +48,12 @@ const DashboardSummary: React.FC = () => {
                     );
 
                     if (existingCategory) {
-                        existingCategory.totalAmount += transaction.amount;
+                        existingCategory.totalAmount += Number(transaction.amount);
                         existingCategory.transactionCount += 1;
                     } else {
                         acc.push({
                             name: transaction.category_name,
-                            totalAmount: transaction.amount,
+                            totalAmount: Number(transaction.amount),
                             transactionCount: 1
                         });
                     }
@@ -51,14 +61,15 @@ const DashboardSummary: React.FC = () => {
                     return acc;
                 }, [] as CategorySummary[])
                     .sort((a, b) => Math.abs(b.totalAmount) - Math.abs(a.totalAmount))
-                    .slice(0, 5); // Top 5 categories
+                    .slice(0, 5);
 
+                console.log('Category totals:', categoryTotals);
                 setCategorySummary(categoryTotals);
                 setLoading(false);
             } catch (err) {
-                setError('Failed to fetch dashboard data');
+                console.error('Full error details:', err);
+                setError('Failed to fetch dashboard data: ' + (err instanceof Error ? err.message : String(err)));
                 setLoading(false);
-                console.error(err);
             }
         };
 
@@ -66,21 +77,31 @@ const DashboardSummary: React.FC = () => {
     }, []);
 
     const calculateSummary = () => {
-        const totalIncome = transactions
+        // Ensure transactions is an array and has numeric amounts
+        const validTransactions = transactions.map(t => ({
+            ...t,
+            amount: Number(t.amount)
+        })).filter(t => !isNaN(t.amount));
+
+        const totalIncome = validTransactions
             .filter(t => t.amount > 0)
             .reduce((sum, t) => sum + t.amount, 0);
 
-        const totalExpenses = transactions
+        const totalExpenses = validTransactions
             .filter(t => t.amount < 0)
             .reduce((sum, t) => sum + Math.abs(t.amount), 0);
 
-        return { totalIncome, totalExpenses, balance: totalIncome - totalExpenses };
+        return {
+            totalIncome: Number.isFinite(totalIncome) ? totalIncome : 0,
+            totalExpenses: Number.isFinite(totalExpenses) ? totalExpenses : 0,
+            balance: Number.isFinite(totalIncome - totalExpenses) ? totalIncome - totalExpenses : 0
+        };
     };
-
-    const { totalIncome, totalExpenses, balance } = calculateSummary();
 
     if (loading) return <div>Loading...</div>;
     if (error) return <div>{error}</div>;
+
+    const { totalIncome, totalExpenses, balance } = calculateSummary();
 
     return (
         <div className="dashboard">
@@ -104,7 +125,6 @@ const DashboardSummary: React.FC = () => {
                     <p>{transactions.length}</p>
                 </div>
             </div>
-
             <div className="dashboard-sections">
                 <div className="card recent-transactions">
                     <div className="card-header">
@@ -126,15 +146,14 @@ const DashboardSummary: React.FC = () => {
                                 <td>{new Date(transaction.booking_date).toLocaleDateString()}</td>
                                 <td>{transaction.title}</td>
                                 <td>{transaction.category_name || 'Uncategorized'}</td>
-                                <td className={transaction.amount >= 0 ? 'income' : 'expense'}>
-                                    {transaction.amount.toFixed(2)} NOK
+                                <td className={Number(transaction.amount) >= 0 ? 'income' : 'expense'}>
+                                    {Number(transaction.amount).toFixed(2)} NOK
                                 </td>
                             </tr>
                         ))}
                         </tbody>
                     </table>
                 </div>
-
                 <div className="card category-summary">
                     <div className="card-header">
                         <h3>Top Categories</h3>
