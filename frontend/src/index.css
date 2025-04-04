@@ -38,6 +38,15 @@ body {
   margin-bottom: 20px;
 }
 
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 10px;
+}
+
 .btn {
   display: inline-block;
   padding: 10px 15px;
@@ -144,4 +153,26 @@ table th {
 .summary-card p {
   font-size: 24px;
   font-weight: bold;
+}
+
+.dashboard-sections {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 768px) {
+  .dashboard-sections {
+    grid-template-columns: 1fr;
+  }
+}
+
+.btn-small {
+  padding: 5px 10px;
+  font-size: 14px;
+}
+
+.error {
+  color: var(--danger-color);
+  margin-bottom: 15px;
 }

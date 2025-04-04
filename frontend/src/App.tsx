@@ -1,35 +1,46 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import Header from './components/common/Header';
+import DashboardSummary from './components/common/DashboardSummary';
 
-function App() {
-  const [count, setCount] = useState(0)
+// Transactions
+import TransactionList from './components/transactions/TransactionList';
+import TransactionDetail from './components/transactions/TransactionDetail';
+import TransactionForm from './components/transactions/TransactionForm';
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
-}
+// Categories
+import CategoryList from './components/categories/CategoryList';
+import CategoryDetail from './components/categories/CategoryDetail';
+import CategoryForm from './components/categories/CategoryForm';
 
-export default App
+import './App.css';
+
+const App: React.FC = () => {
+    return (
+        <Router>
+            <div className="app">
+                <Header />
+                <div className="container">
+                    <Routes>
+                        {/* Dashboard */}
+                        <Route path="/" element={<DashboardSummary />} />
+
+                        {/* Transactions Routes */}
+                        <Route path="/transactions" element={<TransactionList />} />
+                        <Route path="/transactions/new" element={<TransactionForm />} />
+                        <Route path="/transactions/edit/:id" element={<TransactionForm />} />
+                        <Route path="/transactions/:id" element={<TransactionDetail />} />
+
+                        {/* Categories Routes */}
+                        <Route path="/categories" element={<CategoryList />} />
+                        <Route path="/categories/new" element={<CategoryForm />} />
+                        <Route path="/categories/edit/:id" element={<CategoryForm />} />
+                        <Route path="/categories/:id" element={<CategoryDetail />} />
+                    </Routes>
+                </div>
+            </div>
+        </Router>
+    );
+};
+
+export default App;

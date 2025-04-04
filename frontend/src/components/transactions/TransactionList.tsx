@@ -1,21 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../../services/api';
 import { format } from 'date-fns';
+import api, {Transaction} from '../../services/api';
 import './TransactionList.css';
-
-interface Transaction {
-    id: number;
-    booking_date: string;
-    amount: number;
-    sender: string;
-    receiver: string;
-    name: string;
-    title: string;
-    currency: string;
-    payment_type: string;
-    category_name: string;
-}
 
 const TransactionList: React.FC = () => {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
